@@ -15,14 +15,16 @@ CLASS_INDEX_PATH = "outputs/03_modelling_and_evaluating/class_indices.pkl"
 
 
 def download_if_missing(path, file_id):
-    if not os.path.exists(path):
-        print(f"Found existing file at {path}, deleting to force re-download.")
+    # Always delete and re-download on Heroku
+    if "DYNO" in os.environ and os.path.exists(path):
+        print(f"Deleting existing file on Heroku to force re-download: {path}")
         os.remove(path)
 
+    if not os.path.exists(path):
         os.makedirs(os.path.dirname(path), exist_ok=True)
         url = f"https://drive.google.com/uc?id={file_id}"
         print(f"Downloading {os.path.basename(path)} from Google Drive...")
-        gdown.download(url, path, quiet=False)
+        gdown.download(url, path, quiet=False, fuzzy=True)
         print(f"Finished downloading: {path}")
         print(f"File size: {os.path.getsize(path)} bytes")
 
