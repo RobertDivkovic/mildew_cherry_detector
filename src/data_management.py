@@ -16,6 +16,9 @@ CLASS_INDEX_PATH = "outputs/03_modelling_and_evaluating/class_indices.pkl"
 
 def download_if_missing(path, file_id):
     if not os.path.exists(path):
+        print(f"Found existing file at {path}, deleting to force re-download.")
+        os.remove(path)
+
         os.makedirs(os.path.dirname(path), exist_ok=True)
         url = f"https://drive.google.com/uc?id={file_id}"
         print(f"Downloading {os.path.basename(path)} from Google Drive...")
