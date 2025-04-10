@@ -17,7 +17,8 @@ IMAGE_SHAPE_PATH = "outputs/02_data_visualisation/image_shape.pkl"
 CLASS_INDEX_PATH = "outputs/03_modelling_and_evaluating/class_indices.pkl"
 POWDERY_ZIP_PATH = "inputs/powdery_mildew.zip"
 HEALTHY_ZIP_PATH = "inputs/healthy.zip"
-EXTRACTED_DATASET_PATH = "inputs"
+EXTRACTED_DATASET_PATH = "inputs/cherry_leaves_split/train"
+
 
 def is_h5_valid(path):
     try:
@@ -44,6 +45,7 @@ def download_if_missing(path, file_id):
 
 
 def unzip_if_needed(zip_path, extract_to):
+    os.makedirs(extract_to, exist_ok=True)
     with zipfile.ZipFile(zip_path, 'r') as zip_ref:
         zip_ref.extractall(extract_to)
         print(f"[Unzip] Extracted {zip_path} to {extract_to}")
@@ -61,9 +63,9 @@ def load_model_and_metadata(
     download_if_missing(POWDERY_ZIP_PATH, POWDERY_MILDEW_ZIP_ID)
     download_if_missing(HEALTHY_ZIP_PATH, HEALTHY_ZIP_ID)
 
-    # Unzip datasets
-    unzip_if_needed(POWDERY_ZIP_PATH, EXTRACTED_DATASET_PATH)
-    unzip_if_needed(HEALTHY_ZIP_PATH, EXTRACTED_DATASET_PATH)
+    # Unzip datasets to correct nested paths
+    unzip_if_needed(POWDERY_ZIP_PATH, os.path.join(EXTRACTED_DATASET_PATH, "powdery_mildew"))
+    unzip_if_needed(HEALTHY_ZIP_PATH, os.path.join(EXTRACTED_DATASET_PATH, "healthy"))
 
     # Check model integrity before loading
     if not is_h5_valid(model_path):
