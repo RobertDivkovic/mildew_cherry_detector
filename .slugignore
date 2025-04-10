@@ -1,0 +1,12 @@
+# Ignore data, notebooks, models not needed in slug
+inputs/
+outputs/
+__pycache__/
+.ipynb_checkpoints/
+*.ipynb
+*.h5
+*.pt
+*.pkl
+*.zip
+.env
+kaggle.json
