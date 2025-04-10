@@ -20,6 +20,8 @@ def download_if_missing(path, file_id):
         url = f"https://drive.google.com/uc?id={file_id}"
         print(f"Downloading {os.path.basename(path)} from Google Drive...")
         gdown.download(url, path, quiet=False)
+        print(f"Finished downloading: {path}")
+        print(f"File size: {os.path.getsize(path)} bytes")
 
 
 def load_model_and_metadata(
@@ -31,6 +33,10 @@ def load_model_and_metadata(
     download_if_missing(model_path, MODEL_ID)
     download_if_missing(image_shape_path, IMAGE_SHAPE_ID)
     download_if_missing(class_index_path, CLASS_INDICES_ID)
+
+    # Final pre-load logs
+    print(f"About to load model from: {model_path}")
+    print(f"Model file size: {os.path.getsize(model_path)} bytes")
 
     # Load the files
     model = load_model(model_path)
