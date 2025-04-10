@@ -7,7 +7,7 @@ __pycache__/
 .env
 kaggle.json
 
-# ⬇️ ALLOW specific model & metadata files
+# ALLOW specific model & metadata files
 !outputs/v1/cherry_leaf_mildew_model.h5
 !outputs/v1/image_shape.pkl
 !outputs/v1/class_indices.pkl
