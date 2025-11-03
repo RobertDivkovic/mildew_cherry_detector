@@ -1,30 +1,25 @@
-# --- Virtual env / local secrets ---
-.venv/
-env.py
-.env
-
-# Kaggle credentials
-kaggle.json
-
-# Python cache
-__pycache__/
-*.pyc
-
-# Streamlit local state
-.streamlit/
-
-# --- Outputs: ignore everything by default ---
+# Ignore everything under outputs by default
 outputs/**
 
-# Keep ONLY the small metadata files we need at runtime:
+# Re-allow the outputs dir itself and the two subdirs
+!outputs/
+!outputs/02_data_visualisation/
+!outputs/03_modelling_and_evaluating/
+
+# Keep ONLY the small runtime artifacts
 !outputs/02_data_visualisation/image_shape.pkl
 !outputs/03_modelling_and_evaluating/class_indices.pkl
 
-# Explicitly ignore model artifacts
+# Still ignore big model artifacts
 outputs/v1/*.h5
 outputs/v1/*.keras
 
-# (Optional) keep training plots if you want them in the repo:
-# !outputs/03_modelling_and_evaluating/training_accuracy.png
-# !outputs/03_modelling_and_evaluating/training_loss.png
-# !outputs/03_modelling_and_evaluating/confusion_matrix.png
+# Usual stuff
+.venv/
+__pycache__/
+*.pyc
+.env
+env.py
+.streamlit/
+.ipynb_checkpoints/
+kaggle.json
