@@ -1,20 +1,30 @@
-.venv
+# --- Virtual env / local secrets ---
+.venv/
 env.py
 .env
 
-!outputs/v1/cherry_leaf_mildew_model.h5
-!outputs/v1/image_shape.pkl
-!outputs/v1/class_indices.pkl
-
-# Ignore Jupyter checkpoints
-.ipynb_checkpoints/
-
-# Ignore kaggle API key if present
+# Kaggle credentials
 kaggle.json
 
-# Ignore Python cache
+# Python cache
 __pycache__/
 *.pyc
 
-outputs/
-*.h5
+# Streamlit local state
+.streamlit/
+
+# --- Outputs: ignore everything by default ---
+outputs/**
+
+# Keep ONLY the small metadata files we need at runtime:
+!outputs/02_data_visualisation/image_shape.pkl
+!outputs/03_modelling_and_evaluating/class_indices.pkl
+
+# Explicitly ignore model artifacts
+outputs/v1/*.h5
+outputs/v1/*.keras
+
+# (Optional) keep training plots if you want them in the repo:
+# !outputs/03_modelling_and_evaluating/training_accuracy.png
+# !outputs/03_modelling_and_evaluating/training_loss.png
+# !outputs/03_modelling_and_evaluating/confusion_matrix.png

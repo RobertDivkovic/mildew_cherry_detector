@@ -1,85 +1,74 @@
+# src/data_management.py
 import os
+import shutil
+import requests
 import joblib
-import gdown
-import zipfile
+from pathlib import Path
 from tensorflow.keras.models import load_model
 
-# Google Drive File IDs
-MODEL_ID = "1GYpG0YDaNUGaxTx5c4CgVp5rbksmiptP"
-IMAGE_SHAPE_ID = "1eAlTBXjbEh6BslNDvTV3CqrECcFeAW8j"
-CLASS_INDICES_ID = "1yLJPT2gQpijFCXzE9ogl6Desrmteka2e"
-POWDERY_MILDEW_ZIP_ID = "1lVl9K68iQ4X6METcyZtH8xqEq42zxcee"
-HEALTHY_ZIP_ID = "1o1Q-iih2WCFrPYohXWevDAvm4zdeI7pH"
+try:
+    from huggingface_hub import hf_hub_download
+    HF_AVAILABLE = True
+except Exception:
+    HF_AVAILABLE = False
 
-# Local paths
-MODEL_PATH = "outputs/v1/cherry_leaf_mildew_model.h5"
-IMAGE_SHAPE_PATH = "outputs/02_data_visualisation/image_shape.pkl"
-CLASS_INDEX_PATH = "outputs/03_modelling_and_evaluating/class_indices.pkl"
-POWDERY_ZIP_PATH = "inputs/powdery_mildew.zip"
-HEALTHY_ZIP_PATH = "inputs/healthy.zip"
-EXTRACTED_DATASET_PATH = "inputs"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+def proj_path(*parts) -> str:
+    return str(PROJECT_ROOT.joinpath(*parts))
 
+def _download_stream(url: str, dst_path: str, chunk_size: int = 1 << 20):
+    dst = Path(dst_path)
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    with requests.get(url, stream=True, timeout=60) as r:
+        r.raise_for_status()
+        with open(dst, "wb") as f:
+            for c in r.iter_content(chunk_size=chunk_size):
+                if c:
+                    f.write(c)
+    return str(dst)
 
-def is_h5_valid(path):
-    try:
-        with open(path, 'rb') as f:
-            signature = f.read(8)
-            return signature == b'\x89HDF\r\n\x1a\n'
-    except Exception as e:
-        print(f"[ERROR] Could not validate HDF5 file at {path}: {e}")
-        return False
+def _fetch_model_if_needed(model_path: str, *, hf_repo_id: str | None = None,
+                           hf_filename: str | None = None, http_url: str | None = None) -> str:
+    if os.path.exists(model_path):
+        return model_path
 
+    Path(model_path).parent.mkdir(parents=True, exist_ok=True)
 
-def download_if_missing(path, file_id):
-    if "DYNO" in os.environ and os.path.exists(path):
-        print(f"[Heroku] Deleting existing file to force re-download: {path}")
-        os.remove(path)
+    if hf_repo_id and hf_filename:
+        if not HF_AVAILABLE:
+            raise RuntimeError("Install huggingface_hub or remove HF_REPO_ID/HF_FILENAME.")
+        token = os.getenv("HUGGINGFACE_HUB_TOKEN")  # optional for private repos
+        local_cache = hf_hub_download(repo_id=hf_repo_id, filename=hf_filename, token=token)
+        shutil.copy(local_cache, model_path)
+        return model_path
 
-    if not os.path.exists(path):
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        url = f"https://drive.google.com/uc?id={file_id}"
-        print(f"[Download] Fetching {os.path.basename(path)} from Google Drive...")
-        gdown.download(url, path, quiet=False, fuzzy=True)
-        print(f"[Download] Finished downloading: {path}")
-        print(f"[Download] File size: {os.path.getsize(path)} bytes")
+    if http_url:
+        _download_stream(http_url, model_path)
+        return model_path
 
+    raise FileNotFoundError(
+        f"Model not found: {model_path}. Provide HF_REPO_ID+HF_FILENAME or MODEL_URL, "
+        f"or place the .h5 file locally at that path."
+    )
 
-def unzip_if_needed(zip_path, extract_to):
-    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-        zip_ref.extractall(extract_to)
-        print(f"[Unzip] Extracted {zip_path} to {extract_to}")
+def load_model_and_metadata(model_path: str, image_shape_path: str, class_indices_path: str):
+    model_path       = proj_path(model_path)       # expect .h5
+    image_shape_path = proj_path(image_shape_path)
+    class_indices_path = proj_path(class_indices_path)
 
+    model_file = _fetch_model_if_needed(
+        model_path,
+        hf_repo_id=os.getenv("HF_REPO_ID"),
+        hf_filename=os.getenv("HF_FILENAME"),
+        http_url=os.getenv("MODEL_URL"),
+    )
 
-def load_model_and_metadata(
-    model_path=MODEL_PATH,
-    image_shape_path=IMAGE_SHAPE_PATH,
-    class_index_path=CLASS_INDEX_PATH
-):
-    # Download model and metadata
-    download_if_missing(model_path, MODEL_ID)
-    download_if_missing(image_shape_path, IMAGE_SHAPE_ID)
-    download_if_missing(class_index_path, CLASS_INDICES_ID)
-    download_if_missing(POWDERY_ZIP_PATH, POWDERY_MILDEW_ZIP_ID)
-    download_if_missing(HEALTHY_ZIP_PATH, HEALTHY_ZIP_ID)
+    if not os.path.exists(image_shape_path):
+        raise FileNotFoundError(f"Missing image shape: {image_shape_path}")
+    if not os.path.exists(class_indices_path):
+        raise FileNotFoundError(f"Missing class indices: {class_indices_path}")
 
-    # Unzip datasets to correct directory (train folder)
-    unzip_if_needed(POWDERY_ZIP_PATH, os.path.join(EXTRACTED_DATASET_PATH, "cherry_leaves_split", "train"))
-    unzip_if_needed(HEALTHY_ZIP_PATH, os.path.join(EXTRACTED_DATASET_PATH, "cherry_leaves_split", "train"))
-
-    # Check model integrity before loading
-    if not is_h5_valid(model_path):
-        raise OSError(f"[ERROR] File at '{model_path}' is not a valid .h5 file (possible corrupted download).")
-
-    print(f"[Model] Loading model from: {model_path}")
-    print(f"[Model] Model file size: {os.path.getsize(model_path)} bytes")
-
-    # Load the files
-    model = load_model(model_path)
+    model = load_model(model_file)  # loads .h5
     image_shape = joblib.load(image_shape_path)
-    class_indices = joblib.load(class_index_path)
-
+    class_indices = joblib.load(class_indices_path)
     return model, image_shape, class_indices
-
-
-def load_class_mapping(class_indices):
-    return {v: k for k, v in class_indices.items()}
